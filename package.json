@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "n8n-nodes-globals": "^1.1.0"
+  }
+}

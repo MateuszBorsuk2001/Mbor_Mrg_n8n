@@ -1,0 +1,932 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d0b2e2c1-ea7d-4ce4-ada2-1191be10ced1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        176,
+        256
+      ],
+      "webhookId": "ai-chat-webhook"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "dbacf37b-9a6f-4b6c-b1ed-eb9ce57226b6",
+      "name": "Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1968,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "g79308i3-e148-8h23-f20j-g9ji1h81i22e",
+              "name": "text",
+              "value": "={{ $json.text || $json[0].text || $json.output || $json.message || 'No response generated' }}",
+              "type": "string"
+            },
+            {
+              "id": "h80419j4-f259-9i34-g31k-h0kj2i92j33f",
+              "name": "messageId",
+              "value": "={{ $('Webhook').json.body.messageId }}",
+              "type": "number"
+            },
+            {
+              "id": "i91520k5-g360-0j45-h42l-i1lk3j03k44g",
+              "name": "conversationId",
+              "value": "={{ $('Webhook').json.body.conversationId }}",
+              "type": "number"
+            },
+            {
+              "id": "j02631l6-h471-1k56-i53m-j2ml4k14l55h",
+              "name": "timestamp",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9d4956e8-4a83-4789-bbea-543f8d25e2bc",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1840,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Jesteś pomocnym asystentem podróży AI. Odpowiadaj na wiadomość użytkownika w języku użytkownika. Bądź przyjazny, pomocny i zwięzły. Nie powtarzaj powitań ani wstępów, chyba że użytkownik rozpoczyna nową rozmowę.\n\nPoprzednia rozmowa:\n{{ $json.chatInput }}\n\nAktualna wiadomość użytkownika:\n{{ $json.message }}\n\nOdpowiadaj naturalnie na bieżącą wiadomość, uwzględniając kontekst rozmowy."
+      },
+      "id": "4d3357fc-6e68-4535-9233-54c5319ce3e6",
+      "name": "Chat LLM Chain",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "position": [
+        1568,
+        240
+      ],
+      "typeVersion": 1.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c35064e9-a714-4d89-b86f-c5fe7d47e89a",
+              "name": "chatInput",
+              "value": "={{ $input.first().json.body.chatInput }}",
+              "type": "string"
+            },
+            {
+              "id": "d46075f0-b825-5e90-c97g-d6gf8e58f99b",
+              "name": "conversationHistory",
+              "value": "={{ $input.first().json.body.conversationHistory }}",
+              "type": "array"
+            },
+            {
+              "id": "e57186g1-c936-6f01-d08h-e7hg9f69g00c",
+              "name": "messageId",
+              "value": "={{ $input.first().json.body.messageId }}",
+              "type": "number"
+            },
+            {
+              "id": "f68297h2-d047-7g12-e19i-f8ih0g70h11d",
+              "name": "conversationId",
+              "value": "={{ $input.first().json.body.conversationId }}",
+              "type": "number"
+            },
+            {
+              "id": "g79308i3-e148-8h23-f20j-g9ji1h81i22f",
+              "name": "message",
+              "value": "={{ $input.first().json.body.message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        352,
+        256
+      ],
+      "id": "9e0331c3-ac02-4044-bd23-4013ef3220ec",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst polishToAscii = (s) => (s || '')\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '');\n\nreturn items.map((item) => {\n  const inData = item.json;\n  const raw = inData.message ?? inData.text ?? inData.speech ?? '';\n  const normalized = polishToAscii(raw).toLowerCase();\n  return {\n    json: {\n      ...inData,\n      message: normalized,\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        256
+      ],
+      "id": "0711f1ae-0b3e-497f-b57d-06b2837eefde",
+      "name": "Remove Polish Signs"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d8c9b63e-4efb-44d6-a253-67059f00f37f",
+              "leftValue": "={{ $json.geoapifyParams.categories }}",
+              "rightValue": "no_categories",
+              "operator": {
+                "type": "array",
+                "operation": "empty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "89da3cec-d7de-4fc2-aa62-4b7f79da8831",
+              "leftValue": "={{ $json.isWeatherQuery }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        912,
+        256
+      ],
+      "id": "eecfb75d-5be5-4401-b809-226395b37199",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst PHRASE_TO_CATEGORIES = {\n  'restauracja wegetarianska': ['catering.restaurant'],\n  'restaurant vegetarien': ['catering.restaurant'],\n  'vegetarian restaurant': ['catering.restaurant'],\n  'restauracja': ['catering.restaurant'],\n  'restaurant': ['catering.restaurant'],\n  'restaurants': ['catering.restaurant'],\n  'jedzenie': ['catering.restaurant', 'catering.cafe'],\n  'food': ['catering.restaurant', 'catering.cafe'],\n  'eat': ['catering.restaurant', 'catering.cafe'],\n  'eating': ['catering.restaurant', 'catering.cafe'],\n  'kawiarnia': ['catering.cafe'],\n  'cafe': ['catering.cafe'],\n  'coffee': ['catering.cafe'],\n  'kawa': ['catering.cafe'],\n  'bar': ['catering.bar'],\n  'pub': ['catering.pub'],\n  'fast food': ['catering.fast_food'],\n  'szybkie jedzenie': ['catering.fast_food'],\n  'pizza': ['catering.fast_food.pizza'],\n  'burger': ['catering.fast_food.burger'],\n  'hotel': ['accommodation.hotel'],\n  'hotele': ['accommodation.hotel'],\n  'nocleg': ['accommodation'],\n  'accommodation': ['accommodation'],\n  'hostel': ['accommodation.hostel'],\n  'apartament': ['accommodation.apartment'],\n  'apartment': ['accommodation.apartment'],\n  'camping': ['camping.camp_site'],\n  'pole namiotowe': ['camping.camp_site'],\n  'supermarket': ['commercial.supermarket'],\n  'sklep': ['commercial.supermarket', 'commercial'],\n  'grocery': ['commercial.supermarket'],\n  'apteka': ['healthcare.pharmacy'],\n  'pharmacy': ['healthcare.pharmacy'],\n  'galeria': ['commercial.shopping_mall'],\n  'mall': ['commercial.shopping_mall'],\n  'centrum handlowe': ['commercial.shopping_mall'],\n  'stacja benzynowa': ['service.vehicle.fuel'],\n  'gas station': ['service.vehicle.fuel'],\n  'fuel': ['service.vehicle.fuel'],\n  'benzyna': ['service.vehicle.fuel'],\n  'parking': ['parking'],\n  'ladowarka': ['service.vehicle.charging_station'],\n  'charging station': ['service.vehicle.charging_station'],\n  'ev charger': ['service.vehicle.charging_station'],\n  'metro': ['public_transport.subway'],\n  'subway': ['public_transport.subway'],\n  'pociag': ['public_transport.train'],\n  'train': ['public_transport.train'],\n  'train station': ['public_transport.train'],\n  'autobus': ['public_transport.bus'],\n  'bus': ['public_transport.bus'],\n  'bus stop': ['public_transport.bus'],\n  'transport publiczny': ['public_transport.train', 'public_transport.bus', 'public_transport.subway'],\n  'public transport': ['public_transport.train', 'public_transport.bus', 'public_transport.subway'],\n  'szpital': ['healthcare.hospital'],\n  'hospital': ['healthcare.hospital'],\n  'dentysta': ['healthcare.dentist'],\n  'dentist': ['healthcare.dentist'],\n  'przychodnia': ['healthcare.clinic_or_praxis'],\n  'clinic': ['healthcare.clinic_or_praxis'],\n  'muzeum': ['entertainment.museum'],\n  'museum': ['entertainment.museum'],\n  'museums': ['entertainment.museum'],\n  'park': ['leisure.park'],\n  'parks': ['leisure.park'],\n  'kino': ['entertainment.cinema'],\n  'cinema': ['entertainment.cinema'],\n  'silownia': ['sport.fitness'],\n  'gym': ['sport.fitness'],\n  'fitness': ['sport.fitness'],\n  'basen': ['sport.swimming_pool'],\n  'swimming pool': ['sport.swimming_pool'],\n  'plaza': ['beach'],\n  'beach': ['beach'],\n  'morze': ['beach'],\n  'morza': ['beach'],\n  'moze': ['beach'],\n  'sea': ['beach'],\n  'seas': ['beach'],\n  'ocean': ['beach'],\n  'wybrzeze': ['beach'],\n  'coast': ['beach'],\n  'coastline': ['beach'],\n  'shore': ['beach'],\n  'nad morzem': ['beach'],\n  'by the sea': ['beach'],\n  'plaze': ['beach'],\n  'beaches': ['beach'],\n  'bankomat': ['service.financial.atm'],\n  'atm': ['service.financial.atm'],\n  'bank': ['service.financial.bank'],\n  'poczta': ['service.post.office'],\n  'post office': ['service.post.office'],\n  'taksowka': ['service.taxi'],\n  'taxi': ['service.taxi'],\n  'zabytki': ['tourism.sights'],\n  'attractions': ['tourism.attraction'],\n  'atrakcje': ['tourism.attraction'],\n  'tourism': ['tourism.attraction', 'tourism.sights'],\n  'turystyka': ['tourism.attraction', 'tourism.sights'],\n  'kosciol': ['tourism.sights.place_of_worship'],\n  'church': ['tourism.sights.place_of_worship'],\n  'zoo': ['entertainment.zoo'],\n  'aquarium': ['entertainment.aquarium'],\n  'akwarium': ['entertainment.aquarium'],\n};\n\nconst PHRASE_TO_CONDITIONS = {\n  'wegetarianskie': ['vegetarian'],\n  'wegetarianska': ['vegetarian'],\n  'vegetarian': ['vegetarian'],\n  'weganskie': ['vegan'],\n  'weganska': ['vegan'],\n  'vegan': ['vegan'],\n  'halal': ['halal'],\n  'koszerne': ['kosher'],\n  'kosher': ['kosher'],\n  'na wozku': ['wheelchair.yes'],\n  'wheelchair': ['wheelchair.yes'],\n  'accessible': ['wheelchair.yes'],\n  'dla niepelnosprawnych': ['wheelchair.yes'],\n  'dostepu dla wozkow': ['wheelchair.yes'],\n  'wifi': ['internet_access.free'],\n  'wi-fi': ['internet_access.free'],\n  'internet': ['internet_access.free'],\n  'darmowy internet': ['internet_access.free'],\n  'free wifi': ['internet_access.free'],\n  'psy dozwolone': ['dogs.yes'],\n  'dogs allowed': ['dogs.yes'],\n  'z psem': ['dogs.yes'],\n  'with dog': ['dogs.yes'],\n  'darmowe': ['no_fee'],\n  'za darmo': ['no_fee'],\n  'free': ['no_fee'],\n  'bez oplat': ['no_fee'],\n  'no fee': ['no_fee'],\n};\n\nconst WEATHER_PHRASES = [\n  'weather', 'pogoda', 'pogod', 'temperature', 'temperat',\n  'rain', 'deszcz', 'deszc', 'snow', 'snieg', 'snie',\n  'sunny', 'slonecznie', 'slonec', 'cloudy', 'pochmurno',\n  'forecast', 'prognoza', 'prognoz', 'will it rain',\n  'jaka pogoda', 'what weather', 'check weather',\n  'czy bedzie', 'will there be'\n];\n\nconst PREFIX_LEN = 4;\n\nfunction matchesPhrase(inputWords, phrase) {\n  const phraseWords = phrase.split(/\\s+/);\n  for (const phraseWord of phraseWords) {\n    const prefix = phraseWord.substring(0, Math.min(PREFIX_LEN, phraseWord.length));\n    const found = inputWords.some(w => w.length >= prefix.length && w.substring(0, prefix.length) === prefix);\n    if (!found) return false;\n  }\n  return true;\n}\n\nconst categoryEntries = Object.entries(PHRASE_TO_CATEGORIES)\n  .sort((a, b) => b[0].length - a[0].length);\nconst conditionEntries = Object.entries(PHRASE_TO_CONDITIONS)\n  .sort((a, b) => b[0].length - a[0].length);\n\nreturn items.map((item) => {\n  const inData = item.json;\n  const raw = inData.message ?? inData.text ?? inData.speech ?? '';\n  const normalized = (raw || '').toLowerCase().trim();\n  const inputWords = normalized.split(/\\s+/).map(w => w.replace(/[^\\w\\s-]/g, '')).filter(Boolean);\n\n  const categoriesSet = new Set();\n  const conditionsSet = new Set();\n\n  for (const [phrase, cats] of categoryEntries) {\n    if (matchesPhrase(inputWords, phrase)) {\n      cats.forEach(c => categoriesSet.add(c));\n    }\n  }\n  for (const [phrase, conds] of conditionEntries) {\n    if (matchesPhrase(inputWords, phrase)) {\n      conds.forEach(c => conditionsSet.add(c));\n    }\n  }\n\n  const isWeatherQuery = WEATHER_PHRASES.some(phrase => matchesPhrase(inputWords, phrase));\n\n  const categories = [...categoriesSet];\n  const conditions = [...conditionsSet];\n  const limit = 50;\n\n  const geoapifyParams = {\n    categories,\n    limit,\n    ...(conditions.length ? { conditions } : {})\n  };\n\n  return {\n    json: {\n      ...inData,\n      type: 'FeatureCollection',\n      features:[],\n      query:[],\n      geoapifyParams,\n      isWeatherQuery\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        256
+      ],
+      "id": "71bef69d-bb5c-44d1-adfa-d67191c391b9",
+      "name": "GeoApify params"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Twoim jedynym zadaniem jest wykrycie lokalizacji w dowolnym zdaniu w języku polskim.\n\nZASADY BEZWZGLĘDNE:\n1. Jeśli wykryjesz miasto lub wieś → zwróć:\n   city: NAZWA\n2. Jeśli wykryjesz kraj → zwróć:\n   country: NAZWA\n3. Jeśli wykryjesz JEDNOCZEŚNIE miasto i kraj → zwróć OBA,\n   przy czym city MUSI BYĆ PIERWSZE, a country w następnej linii.\n4. Jeśli wykryjesz wiele miast → zwróć tylko PIERWSZE z nich.\n5. Jeśli NIE wykryjesz żadnej lokalizacji → zwróć DOKŁADNIE:\n   none\n6. NIE WOLNO dodawać żadnych innych słów, komentarzy, JSON-a,\n   znaków interpunkcyjnych ani wyjaśnień.\n7. Nazwy miejsc zwracaj w mianowniku i z poprawnymi polskimi znakami.\n8. Ignoruj odmiany gramatyczne (np. \"w Raszkowie\" → \"Raszków\").\n\nPRZYKŁADY:\n\nWejście: \"jaka jest pogoda w Warszawie w Polsce\"\nWyjście:\ncity: Warszawa\ncountry: Polska\n\nWejście: \"pogoda w Polsce\"\nWyjście:\ncountry: Polska\n\nWejście: \"czy jutro będzie padać\"\nWyjście:\nnone\nWiadomość użytkownika:\n{{ $json.message }}\n\nOdpowiadaj wg instrukcji bez żądnych zbędnych słów, wyłącznie wuyamgane parametry\n\nOdpowiedz którą możesz wydać musi zawierać słowo poprawinie odmienione które wysłał użytkownik w {{ $json.message }}, nie możesz odpwiedzieć słowem które nie znajduje się w {{ $json.message }}, PRZEDEWSZYSTKIM SKUP SIE NA ZNALEZIENIU city, potem jesli istnieje dodaj państwo z inputu czyli to {{ $json.matchedCountries }}"
+      },
+      "id": "063cc7ff-ad49-4198-a206-b0e87b37a0fb",
+      "name": "Chat LLM Chain1",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "position": [
+        336,
+        512
+      ],
+      "typeVersion": 1.4
+    },
+    {
+      "parameters": {
+        "model": "SpeakLeash/bielik-7b-instruct-v0.1-gguf:latest",
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "id": "157a9b62-a384-404b-9c74-8c51034af545",
+      "name": "Ollama Bielik",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        336,
+        688
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "ATDScVAB6x3HtBcB",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "SpeakLeash/bielik-7b-instruct-v0.1-gguf:latest",
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "id": "2f2d7b0d-55b4-4809-a118-ac3869a41e65",
+      "name": "Ollama Bielik:7b",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        1568,
+        400
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "ATDScVAB6x3HtBcB",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const COUNTRY_PREFIX_LEN = 4;\n\nconst polishToAscii = (s) => (s || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n\nconst POLISH_TO_ENGLISH = {\n  \"Afganistan\": \"Afghanistan\", \"Algieria\": \"Algeria\", \"Samoa Amerykanskie\": \"American Samoa\",\n  \"Andora\": \"Andorra\", \"Antarktyka\": \"Antarctica\", \"Antigua i Barbuda\": \"Antigua and Barbuda\",\n  \"Argentyna\": \"Argentina\", \"Azerbejdzan\": \"Azerbaijan\", \"Bahamy\": \"Bahamas\",\n  \"Bahrajn\": \"Bahrain\", \"Bangladesz\": \"Bangladesh\", \"Bialorus\": \"Belarus\",\n  \"Belgia\": \"Belgium\", \"Bermudy\": \"Bermuda\", \"Boliwia\": \"Bolivia\",\n  \"Bosnia i Hercegowina\": \"Bosnia and Herzegovina\", \"Brazylia\": \"Brazil\",\n  \"Birma\": \"Myanmar\", \"Kambodza\": \"Cambodia\",\n  \"Kamerun\": \"Cameroon\", \"Kanada\": \"Canada\", \"Republika Zielonego Przyladka\": \"Cape Verde\",\n  \"Kajmany\": \"Cayman Islands\", \"Republika Srodkowoafrykanska\": \"Central African Republic\",\n  \"Czad\": \"Chad\", \"Chiny\": \"China\", \"Tajwan\": \"Taiwan\", \"Kolumbia\": \"Colombia\",\n  \"Komory\": \"Comoros\", \"Majotta\": \"Mayotte\", \"Kongo\": \"Congo\",\n  \"Wyspy Cooka\": \"Cook Islands\", \"Kostaryka\": \"Costa Rica\", \"Chorwacja\": \"Croatia\",\n  \"Kuba\": \"Cuba\", \"Cypr\": \"Cyprus\", \"Czechy\": \"Czech Republic\",\n  \"Dania\": \"Denmark\", \"Dzibuti\": \"Djibouti\", \"Dominika\": \"Dominica\",\n  \"Dominikana\": \"Dominican Republic\", \"Ekwador\": \"Ecuador\", \"Egipt\": \"Egypt\",\n  \"Salwador\": \"El Salvador\",\n  \"Gwinea Rownikowa\": \"Equatorial Guinea\", \"Etiopia\": \"Ethiopia\", \"Erytrea\": \"Eritrea\",\n  \"Wyspy Owcze\": \"Faroe Islands\", \"Falklandy\": \"Falkland Islands (Malvinas)\",\n  \"Fidzi\": \"Fiji\", \"Finlandia\": \"Finland\", \"Francja\": \"France\",\n  \"Gujana Francuska\": \"French Guiana\", \"Polinezja Francuska\": \"French Polynesia\",\n  \"Francuskie Terytoria Poludniowe\": \"French Southern Territories\",\n  \"Gruzja\": \"Georgia\", \"Niemcy\": \"Germany\", \"Gwadelupa\": \"Guadeloupe\",\n  \"Gwatemala\": \"Guatemala\", \"Gwinea\": \"Guinea\", \"Gwinea Bissau\": \"Guinea-Bissau\",\n  \"Gujana\": \"Guyana\", \"Wegry\": \"Hungary\", \"Islandia\": \"Iceland\", \"Indie\": \"India\",\n  \"Indonezja\": \"Indonesia\", \"Irak\": \"Iraq\", \"Irlandia\": \"Ireland\",\n  \"Izrael\": \"Israel\", \"Wlochy\": \"Italy\", \"Wybrzeze Kosci Sloniowej\": \"Côte d'Ivoire\",\n  \"Jamajka\": \"Jamaica\", \"Japonia\": \"Japan\",\n  \"Kazachstan\": \"Kazakhstan\", \"Jordania\": \"Jordan\", \"Kenia\": \"Kenya\",\n  \"Korea Polnocna\": \"Democratic People's Republic of Korea\", \"Korea Poludniowa\": \"Republic of Korea\",\n  \"Kuwejt\": \"Kuwait\", \"Kirgistan\": \"Kyrgyzstan\", \"Liban\": \"Lebanon\",\n  \"Lotwa\": \"Latvia\", \"Libia\": \"Libya\", \"Litwa\": \"Lithuania\",\n  \"Luksemburg\": \"Luxembourg\", \"Makau\": \"Macao\", \"Madagaskar\": \"Madagascar\",\n  \"Malezja\": \"Malaysia\", \"Malediwy\": \"Maldives\", \"Martynika\": \"Martinique\",\n  \"Mauretania\": \"Mauritania\", \"Meksyk\": \"Mexico\", \"Moldawia\": \"Moldova\",\n  \"Czarnogora\": \"Montenegro\", \"Maroko\": \"Morocco\", \"Mozambik\": \"Mozambique\",\n  \"Holandia\": \"Netherlands\", \"Nowa Kaledonia\": \"New Caledonia\", \"Nowa Zelandia\": \"New Zealand\",\n  \"Nikaragua\": \"Nicaragua\", \"Norwegia\": \"Norway\", \"Mariany Polnocne\": \"Northern Mariana Islands\",\n  \"Mikronezja\": \"Micronesia\", \"Papua Nowa Gwinea\": \"Papua New Guinea\",\n  \"Paragwaj\": \"Paraguay\", \"Filipiny\": \"Philippines\", \"Polska\": \"Poland\",\n  \"Portugalia\": \"Portugal\", \"Portoryko\": \"Puerto Rico\", \"Katar\": \"Qatar\",\n  \"Rumunia\": \"Romania\", \"Rosja\": \"Russian Federation\", \"Arabia Saudyjska\": \"Saudi Arabia\",\n  \"Seszele\": \"Seychelles\", \"Singapur\": \"Singapore\", \"Slowacja\": \"Slovakia\",\n  \"Wietnam\": \"Viet Nam\", \"Slowenia\": \"Slovenia\", \"Poludniowa Afryka\": \"South Africa\",\n  \"Hiszpania\": \"Spain\", \"Surinam\": \"Suriname\", \"Suazi\": \"Swaziland\",\n  \"Szwecja\": \"Sweden\", \"Szwajcaria\": \"Switzerland\", \"Syria\": \"Syrian Arab Republic\",\n  \"Tadzykistan\": \"Tajikistan\", \"Tajlandia\": \"Thailand\", \"Tunezja\": \"Tunisia\",\n  \"Turcja\": \"Turkey\", \"Turkmenistan\": \"Turkmenistan\", \"Ukraina\": \"Ukraine\",\n  \"Wielka Brytania\": \"United Kingdom\", \"Stany Zjednoczone\": \"United States\",\n  \"Stany Zjednoczone Ameryki\": \"United States\", \"Urugwaj\": \"Uruguay\",\n  \"Wenezuela\": \"Venezuela\", \"Jemen\": \"Yemen\", \"Palestyna\": \"Palestinian Territory\",\n  \"Brytyjskie Wyspy Dziewicze\": \"Virgin Islands, British\",\n  \"Wyspy Salomona\": \"Solomon Islands\", \"Brytyjskie Terytorium Oceanu Indyjskiego\": \"British Indian Ocean Territory\",\n  \"Wyspa Bozego Narodzenia\": \"Christmas Island\", \"Wyspy Kokosowe\": \"Cocos (Keeling) Islands\",\n  \"Sahara Zachodnia\": \"Western Sahara\",\n  \"Zjednoczone Emiraty Arabskie\": \"United Arab Emirates\", \"Oman\": \"Oman\",\n  \"Georgia Poludniowa\": \"South Georgia and the South Sandwich Islands\",\n  \"Wyspa Swietej Heleny\": \"Saint Helena\", \"Saint Kitts i Nevis\": \"Saint Kitts and Nevis\",\n  \"Saint Pierre i Miquelon\": \"Saint Pierre and Miquelon\",\n  \"Saint Vincent i Grenadyny\": \"Saint Vincent and the Grenadines\",\n  \"Timor Wschodni\": \"Timor-Leste\", \"Trynidad i Tobago\": \"Trinidad and Tobago\"\n};\n\nconst COUNTRIES = [\n  \"Afghanistan\", \"Albania\", \"Antarctica\", \"Algeria\", \"American Samoa\",\n  \"Andorra\", \"Angola\", \"Antigua and Barbuda\", \"Azerbaijan\", \"Argentina\",\n  \"Australia\", \"Austria\", \"Bahamas\", \"Bahrain\", \"Bangladesh\", \"Armenia\",\n  \"Barbados\", \"Belgium\", \"Bermuda\", \"Bhutan\", \"Bolivia\",\n  \"Bosnia and Herzegovina\", \"Botswana\", \"Bouvet Island\", \"Brazil\", \"Belize\",\n  \"British Indian Ocean Territory\", \"Solomon Islands\", \"Virgin Islands, British\",\n  \"Brunei Darussalam\", \"Bulgaria\", \"Myanmar\", \"Burundi\", \"Belarus\",\n  \"Cambodia\", \"Cameroon\", \"Canada\", \"Cape Verde\", \"Cayman Islands\",\n  \"Central African Republic\", \"Sri Lanka\", \"Chad\", \"Chile\", \"China\", \"Taiwan\",\n  \"Christmas Island\", \"Cocos (Keeling) Islands\", \"Colombia\", \"Comoros\", \"Mayotte\",\n  \"Congo\", \"Cook Islands\", \"Costa Rica\", \"Croatia\", \"Cuba\", \"Cyprus\",\n  \"Czech Republic\", \"Benin\", \"Denmark\", \"Dominica\", \"Dominican Republic\",\n  \"Ecuador\", \"El Salvador\", \"Equatorial Guinea\", \"Ethiopia\", \"Eritrea\",\n  \"Estonia\", \"Faroe Islands\", \"Falkland Islands (Malvinas)\",\n  \"South Georgia and the South Sandwich Islands\", \"Fiji\", \"Finland\", \"France\",\n  \"French Guiana\", \"French Polynesia\", \"French Southern Territories\",\n  \"Djibouti\", \"Gabon\", \"Georgia\", \"Gambia\", \"Palestinian Territory\",\n  \"Germany\", \"Ghana\", \"Gibraltar\", \"Kiribati\", \"Greece\", \"Greenland\",\n  \"Grenada\", \"Guadeloupe\", \"Guam\", \"Guatemala\", \"Guinea\", \"Guyana\", \"Haiti\",\n  \"Heard Island and McDonald Islands\", \"Holy See (Vatican City State)\",\n  \"Honduras\", \"Hong Kong\", \"Hungary\", \"Iceland\", \"India\", \"Indonesia\",\n  \"Iran\", \"Iraq\", \"Ireland\", \"Israel\", \"Italy\", \"Côte d'Ivoire\", \"Jamaica\",\n  \"Japan\", \"Kazakhstan\", \"Jordan\", \"Kenya\",\n  \"Democratic People's Republic of Korea\", \"Republic of Korea\",\n  \"Kuwait\", \"Kyrgyzstan\", \"Lao People's Democratic Republic\", \"Lebanon\",\n  \"Lesotho\", \"Latvia\", \"Liberia\", \"Libya\", \"Liechtenstein\", \"Lithuania\",\n  \"Luxembourg\", \"Macao\", \"Madagascar\", \"Malawi\", \"Malaysia\", \"Maldives\",\n  \"Mali\", \"Malta\", \"Martinique\", \"Mauritania\", \"Mauritius\", \"Mexico\",\n  \"Monaco\", \"Mongolia\", \"Moldova\", \"Montenegro\", \"Montserrat\", \"Morocco\",\n  \"Mozambique\", \"Oman\", \"Namibia\", \"Nauru\", \"Nepal\", \"Netherlands\", \"Aruba\",\n  \"New Caledonia\", \"Vanuatu\", \"New Zealand\", \"Nicaragua\", \"Niger\", \"Nigeria\",\n  \"Niue\", \"Norfolk Island\", \"Norway\", \"Northern Mariana Islands\",\n  \"United States Minor Outlying Islands\", \"Micronesia\", \"Marshall Islands\",\n  \"Palau\", \"Pakistan\", \"Panama\", \"Papua New Guinea\", \"Paraguay\", \"Peru\",\n  \"Philippines\", \"Pitcairn\", \"Poland\", \"Portugal\", \"Guinea-Bissau\",\n  \"Timor-Leste\", \"Puerto Rico\", \"Qatar\", \"Réunion\", \"Romania\",\n  \"Russian Federation\", \"Rwanda\", \"Saint Helena\", \"Saint Kitts and Nevis\",\n  \"Anguilla\", \"Saint Lucia\", \"Saint Pierre and Miquelon\",\n  \"Saint Vincent and the Grenadines\", \"San Marino\", \"Sao Tome and Principe\",\n  \"Saudi Arabia\", \"Senegal\", \"Seychelles\", \"Sierra Leone\", \"Singapore\",\n  \"Slovakia\", \"Viet Nam\", \"Slovenia\", \"Somalia\", \"South Africa\", \"Zimbabwe\",\n  \"Spain\", \"Western Sahara\", \"Suriname\", \"Svalbard and Jan Mayen\", \"Swaziland\",\n  \"Sweden\", \"Switzerland\", \"Syrian Arab Republic\", \"Tajikistan\", \"Thailand\",\n  \"Togo\", \"Tokelau\", \"Tonga\", \"Trinidad and Tobago\", \"United Arab Emirates\",\n  \"Tunisia\", \"Turkey\", \"Turkmenistan\", \"Turks and Caicos Islands\", \"Tuvalu\",\n  \"Uganda\", \"Ukraine\", \"Macedonia\", \"Egypt\", \"United Kingdom\", \"Tanzania\",\n  \"United States\", \"Virgin Islands\", \"Burkina Faso\", \"Uruguay\", \"Uzbekistan\",\n  \"Venezuela\", \"Wallis and Futuna\", \"Samoa\", \"Yemen\", \"Zambia\"\n];\n\nfunction normalize(str) {\n  return polishToAscii(str || '').toLowerCase().replace(/[^\\w\\s-]/g, ' ').replace(/\\s+/g, ' ').trim();\n}\n\nfunction getWords(text) {\n  return normalize(text).split(/\\s+/).filter(Boolean);\n}\n\nfunction matchesCountry(inputWords, country) {\n  const cleanCountry = country.replace(/\\s*\\([^)]*\\)/g, '').trim();\n  const parts = cleanCountry.split(/\\s+/).filter(p => p.length > 0);\n  for (const part of parts) {\n    const prefix = part.substring(0, Math.min(COUNTRY_PREFIX_LEN, part.length)).toLowerCase();\n    const found = inputWords.some(w => w.length >= prefix.length && w.substring(0, prefix.length) === prefix);\n    if (!found) return false;\n  }\n  return true;\n}\n\nfunction findCountriesInText(text) {\n  const inputWords = getWords(text);\n  const results = new Set();\n  COUNTRIES.filter(c => matchesCountry(inputWords, c)).forEach(c => results.add(c));\n  Object.entries(POLISH_TO_ENGLISH).forEach(([pl, en]) => {\n    if (matchesCountry(inputWords, pl) && COUNTRIES.includes(en)) results.add(en);\n  });\n  return [...results];\n}\n\nfunction run(inputItems) {\n  return inputItems.map((item) => {\n    const inData = item.json;\n    const raw = inData.message ?? inData.text ?? inData.speech ?? '';\n    const matchedCountries = findCountriesInText(raw);\n    return {\n      json: {\n        ...inData,\n        matchedCountries\n      }\n    };\n  });\n}\n\nif (typeof $input !== 'undefined') {\n  return run($input.all());\n}\n\nif (typeof module !== 'undefined' && module.exports) {\n  module.exports = { findCountriesInText, run };\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        512
+      ],
+      "id": "7f3256b8-49d3-4145-8301-e3fc40163b59",
+      "name": "Find Country"
+    },
+    {
+      "parameters": {
+        "jsCode": "const API_KEY = 'e80d352d07d74efd8be2882b6461e0c1';\n\nfunction parseInput(raw) {\n  const out = { apiKey: API_KEY };\n  const s = (raw || '').trim();\n  const cityMatch = s.match(/\\bcity:\\s*(.+?)(?=\\n|$)/i);\n  const countryMatch = s.match(/\\bcountry:\\s*(.+?)(?=\\n|$)/i);\n  if (cityMatch) out.city = cityMatch[1].trim();\n  if (countryMatch) out.country = countryMatch[1].trim();\n  return out;\n}\n\nconst items = $input.all();\n\nreturn items.map(item => {\n  const raw = item.json?.input ?? item.json?.text ?? item.json?.message ?? item.json?.data ?? '';\n  return { json: parseInput(typeof raw === 'string' ? raw : JSON.stringify(raw)) };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        512
+      ],
+      "id": "17679908-4043-49d5-8e16-50c5d6208826",
+      "name": "Prepare api call"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1376,
+        608
+      ],
+      "id": "9fca8e54-ac87-4f1b-b14b-31a4bf4eab9f",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.city }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "empty",
+                      "singleValue": true
+                    },
+                    "id": "462fc92f-2d9a-4e06-a097-d506f9f1ea59"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "No city"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8cfd1351-26d7-48f2-9c76-3229e9ad6408",
+                    "leftValue": "={{ $json.country }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "empty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "No country"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "95802798-da44-47d4-8edf-30f23aeb7877",
+                    "leftValue": "={{ $json.country && $json.city }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Both"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        832,
+        608
+      ],
+      "id": "ec15870b-f42c-40c5-b596-20821180efdf",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "url": "https://api.geoapify.com/v1/geocode/search?",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "country",
+              "value": "={{ $json.country }}"
+            },
+            {
+              "name": "apiKey",
+              "value": "={{ $json.apiKey }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1056,
+        496
+      ],
+      "id": "6e14cdc8-1937-40b6-8885-25ef05055001",
+      "name": "Geocode"
+    },
+    {
+      "parameters": {
+        "url": "https://api.geoapify.com/v1/geocode/search?",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "city",
+              "value": "={{ $json.city }}"
+            },
+            {
+              "name": "apiKey",
+              "value": "={{ $json.apiKey }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1056,
+        624
+      ],
+      "id": "e593a000-bcae-409b-a32e-f5ad559d5a2c",
+      "name": "Geocode1"
+    },
+    {
+      "parameters": {
+        "url": "https://api.geoapify.com/v1/geocode/search?",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "city",
+              "value": "={{ $json.city }}"
+            },
+            {
+              "name": "country",
+              "value": "={{ $json.country }}"
+            },
+            {
+              "name": "apiKey",
+              "value": "={{ $json.apiKey }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1056,
+        752
+      ],
+      "id": "7ba26296-6fc4-47ab-a274-2ebcb8ac5cba",
+      "name": "Geocode2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6f32513e-4fde-4a8f-b496-a92b958c1d19",
+              "leftValue": "={{ $json.geoapifyParams.conditions }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1648,
+        720
+      ],
+      "id": "7396237b-5c32-48e5-abe2-886f1ed9ad0b",
+      "name": "Does conditions exist"
+    },
+    {
+      "parameters": {
+        "url": "https://api.geoapify.com/v2/places",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filter",
+              "value": "={{ $json[\"features[0].properties.place_id\"] }}"
+            },
+            {
+              "name": "apiKey",
+              "value": "e80d352d07d74efd8be2882b6461e0c1"
+            },
+            {
+              "name": "categories",
+              "value": "={{ $json[\"geoapifyParams.categories\"] }}"
+            },
+            {
+              "name": "conditions",
+              "value": "={{ $json[\"geoapifyParams.conditions\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2080,
+        640
+      ],
+      "id": "12bcc562-13d9-4a7f-9eca-7599d9fb752f",
+      "name": "Places with condition"
+    },
+    {
+      "parameters": {
+        "url": "https://api.geoapify.com/v2/places",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filter",
+              "value": "={{ $json[\"features[0].properties.place_id\"] }}"
+            },
+            {
+              "name": "apiKey",
+              "value": "e80d352d07d74efd8be2882b6461e0c1"
+            },
+            {
+              "name": "categories",
+              "value": "={{ $json[\"geoapifyParams.categories\"] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2080,
+        800
+      ],
+      "id": "a7d3285a-74f5-4b4e-9ca1-e21df6fb02f9",
+      "name": "Places without condition"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "geoapifyParams.categories",
+        "include": "selectedOtherFields",
+        "fieldsToInclude": "features[0].properties.place_id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1904,
+        800
+      ],
+      "id": "239ab8f6-9f1b-4beb-b381-25a5838ecf17",
+      "name": "Split Out Categories"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "geoapifyParams.categories, geoapifyParams.conditions",
+        "include": "selectedOtherFields",
+        "fieldsToInclude": "features[0].properties.place_id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1904,
+        640
+      ],
+      "id": "b4f8edbc-007b-4dfb-89ea-777b6aff3570",
+      "name": "Split Out Categories with conditions"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "features",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        2288,
+        800
+      ],
+      "id": "a1c0e937-6aaa-4ea2-b5ba-e8a780ced1f5",
+      "name": "Split Out Features"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "features",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        2288,
+        640
+      ],
+      "id": "91783a53-432d-40d6-b640-07d929914fd2",
+      "name": "Split Out Features1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Remove Polish Signs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Polish Signs": {
+      "main": [
+        [
+          {
+            "node": "GeoApify params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Chat LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Find Country",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GeoApify params": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Bielik": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Chat LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Bielik:7b": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Chat LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Country": {
+      "main": [
+        [
+          {
+            "node": "Chat LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Prepare api call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare api call": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Geocode",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Geocode1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Geocode2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Geocode2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Geocode1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Geocode": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Does conditions exist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Does conditions exist": {
+      "main": [
+        [
+          {
+            "node": "Split Out Categories with conditions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split Out Categories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Places with condition": {
+      "main": [
+        [
+          {
+            "node": "Split Out Features1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Places without condition": {
+      "main": [
+        [
+          {
+            "node": "Split Out Features",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Categories": {
+      "main": [
+        [
+          {
+            "node": "Places without condition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Categories with conditions": {
+      "main": [
+        [
+          {
+            "node": "Places with condition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "836ded50-e039-40e0-8a44-cd9d4e65a8e9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dc93e5a33d932d690229d9ae1e62f997dc2471c45b05145da60a5791ff8d1ebb"
+  },
+  "id": "iMQait2XgF1z5sWh",
+  "tags": []
+}
